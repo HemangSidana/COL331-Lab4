@@ -547,3 +547,16 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+pde_t* victim_pgdir(){
+  uint max_rss=0;
+  struct proc *q;
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->rss > max_rss){
+      q=p;
+      max_rss= p->rss;
+    }
+  }
+  return q->pgdir;
+}

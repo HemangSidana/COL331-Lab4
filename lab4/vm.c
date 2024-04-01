@@ -233,9 +233,14 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   for(; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
-      cprintf("allocuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      return 0;
+      // cprintf("allocuvm out of memory\n");
+      // deallocuvm(pgdir, newsz, oldsz);
+      // return 0;
+      allocate_page();
+      mem= kalloc();
+      if(mem==0){
+        cprintf("still not allocated");
+      }
     }
     memset(mem, 0, PGSIZE);
     if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
@@ -392,3 +397,80 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
+void allocate_page(){
+  // Get page directory of process having maximum rss
+  pde_t *victim_pde= victim_pgdir();
+  pte_t* victim_page;
+  victim_page= find_victim(victim_pde);
+  // Failed to find victim page
+  if(victim_page==0){
+    unset_access(victim_pde);
+    victim_page= find_victim(victim_pde);
+    // Save contents of this page in swap blocks
+    // PTE_P is unset because page is not in memory
+    // Change its address to position in swap_slot
+    char *data;
+    memmove(data, (char*)P2V(PTE_ADDR(victim_page)), PGSIZE);
+    int permissions= (*victim_page) & 0x07;
+    uint pos= add_page(data,permissions);
+    *victim_page &= ~PTE_P;
+    *victim_page |= (pos)<<3;
+  }
+  return;
+}
+
+pte_t* find_victim(pde_t *pgdir){
+  uint add=0;
+  while(add < KERNBASE){
+    pte_t *x= walkpgdir(pgdir,(void*)add,0);
+    // PTE_P is set for x (otherwise walkpgdir function will return 0)
+    if(x!=0){
+      // Found a process with PTE_A Flag unset
+      if((*x & PTE_A)==0){
+        return x;
+      }
+    }
+    add+=PGSIZE;
+  }
+  // Failed to find victim page
+  return 0;
+}
+
+void unset_access(pde_t *pgdir){
+  uint add=0;
+  int counter=0;
+  while(add < KERNBASE){
+    pte_t *x= walkpgdir(pgdir,(void*)add,0);
+    if(x!=0){
+      // Unset access bit of every tenth process
+      if(counter==0){
+        *x &= ~ PTE_A;
+      }
+      counter= (counter+1)%10;
+    }
+    add+=PGSIZE;
+  }
+  return;
+}
+
+void page_fault(){
+  uint add= rcr2();
+  uint x= (add>>3) & 0x07;
+  uint st= x*8+2;
+  // Read contents of page in mem
+  char *mem= kalloc();
+  // use allocuvm in case memory is full
+  if(mem==0){
+
+  }
+  char *cur=mem;
+  for(int j=0;j<8;j++){
+    rsect(st,cur);
+    cur+=PGSIZE/8;
+    st++;
+  }
+  // Fetch permissions of page and mark swap slot free
+  uint per= remove_page(x);
+  // add new page
+
+}

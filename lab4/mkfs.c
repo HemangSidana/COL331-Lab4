@@ -17,13 +17,16 @@
 
 #define NINODES 200
 
+#define nswapslots 4
+#define nswapblocks 32
+
 // Disk layout:
-// [ boot block | sb block | log | inode blocks | free bit map | data blocks ]
+// [ boot block | sb block | swap blocks | log | inode blocks | free bit map | data blocks ]
 
 int nbitmap = FSSIZE/(BSIZE*8) + 1;
 int ninodeblocks = NINODES / IPB + 1;
 int nlog = LOGSIZE;
-int nmeta;    // Number of meta blocks (boot, sb, nlog, inode, bitmap)
+int nmeta;    // Number of meta blocks (boot, sb, swap, nlog, inode, bitmap)
 int nblocks;  // Number of data blocks
 
 int fsfd;
@@ -31,6 +34,7 @@ struct superblock sb;
 char zeroes[BSIZE];
 uint freeinode = 1;
 uint freeblock;
+struct swap_slot ss[nswapslots];
 
 
 void balloc(int);
@@ -91,16 +95,18 @@ main(int argc, char *argv[])
   }
 
   // 1 fs block = 1 disk sector
-  nmeta = 2 + nlog + ninodeblocks + nbitmap;
+  nmeta = 2 + nlog + ninodeblocks + nbitmap + nswapblocks;
   nblocks = FSSIZE - nmeta;
 
   sb.size = xint(FSSIZE);
   sb.nblocks = xint(nblocks);
   sb.ninodes = xint(NINODES);
   sb.nlog = xint(nlog);
-  sb.logstart = xint(2);
-  sb.inodestart = xint(2+nlog);
-  sb.bmapstart = xint(2+nlog+ninodeblocks);
+  sb.nswap = xint(nswapblocks);
+  sb.swapstart = xint(2);
+  sb.logstart = xint(2+nswapblocks);
+  sb.inodestart = xint(2+nlog+nswapblocks);
+  sb.bmapstart = xint(2+nlog+ninodeblocks+nswapblocks);
 
   printf("nmeta %d (boot, super, log blocks %u inode blocks %u, bitmap blocks %u) blocks %d total %d\n",
          nmeta, nlog, ninodeblocks, nbitmap, nblocks, FSSIZE);
@@ -113,6 +119,11 @@ main(int argc, char *argv[])
   memset(buf, 0, sizeof(buf));
   memmove(buf, &sb, sizeof(sb));
   wsect(1, buf);
+
+  for(i=0; i<nswapslots; i++){
+    ss[i].page_perm=0;
+    ss[i].is_free=1;
+  }
 
   rootino = ialloc(T_DIR);
   assert(rootino == ROOTINO);
@@ -294,4 +305,24 @@ iappend(uint inum, void *xp, int n)
   }
   din.size = xint(off);
   winode(inum, &din);
+}
+
+uint add_page(char* data, int permissions){
+  uint i;
+  for(i=0; i<nswapslots; i++){
+    if(ss[i].is_free) break;
+  }
+  ss[i].is_free=0;
+  ss[i].page_perm= permissions;
+  char* cur= data;
+  for(int j=0;j<8;j++){
+    wsect(2+8*i+j,cur);
+    cur+= BSIZE;
+  }
+  return i;
+}
+
+uint remove_page(uint i){
+  ss[i].is_free=1;
+  return ss[i].page_perm;
 }
