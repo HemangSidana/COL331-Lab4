@@ -58,6 +58,6 @@ struct dirent {
 };
 
 struct swap_slot {
-    int page_perm;  
-    int is_free; 
+    uint page_perm;  
+    uint is_free; 
 };

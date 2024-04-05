@@ -6,6 +6,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
+#include "mkfs.c"
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -233,14 +234,14 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   for(; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
-      // cprintf("allocuvm out of memory\n");
-      // deallocuvm(pgdir, newsz, oldsz);
-      // return 0;
-      allocate_page();
-      mem= kalloc();
-      if(mem==0){
-        cprintf("still not allocated");
-      }
+      cprintf("allocuvm out of memory\n");
+      deallocuvm(pgdir, newsz, oldsz);
+      return 0;
+      // allocate_page();
+      // mem= kalloc();
+      // if(mem==0){
+      //   cprintf("still not allocated");
+      // }
     }
     memset(mem, 0, PGSIZE);
     if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
@@ -397,7 +398,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
-void allocate_page(){
+pte_t* allocate_page(){
   // Get page directory of process having maximum rss
   pde_t *victim_pde= victim_pgdir();
   pte_t* victim_page;
@@ -409,14 +410,16 @@ void allocate_page(){
     // Save contents of this page in swap blocks
     // PTE_P is unset because page is not in memory
     // Change its address to position in swap_slot
-    char *data;
-    memmove(data, (char*)P2V(PTE_ADDR(victim_page)), PGSIZE);
-    int permissions= (*victim_page) & 0x07;
-    uint pos= add_page(data,permissions);
-    *victim_page &= ~PTE_P;
-    *victim_page |= (pos)<<3;
-  }
-  return;
+    // Copying contents should be written outside if condition
+    }
+  char *data;
+  memmove(data, (char*)P2V(PTE_ADDR(victim_page)), PGSIZE);
+  int permissions= (*victim_page) & 0x07;
+  uint pos= add_page(data,permissions);
+  *victim_page &= ~PTE_P;
+  *victim_page |= (pos)<<12;  // It should be 12 instead of 3 because according to slides we are storing swap space index in base address space of pagetable entry
+
+  return victim_page;
 }
 
 pte_t* find_victim(pde_t *pgdir){
@@ -454,23 +457,33 @@ void unset_access(pde_t *pgdir){
 }
 
 void page_fault(){
-  uint add= rcr2();
-  uint x= (add>>3) & 0x07;
+  uint vadd= rcr2();
+  pte_t *add = walkpgdir(myproc()->pgdir,(void*)vadd,0);
+  uint x= (*add>>12) & 0x07; // Instead of 3->12  and confusion in and
   uint st= x*8+2;
   // Read contents of page in mem
   char *mem= kalloc();
   // use allocuvm in case memory is full
-  if(mem==0){
-
-  }
+  // if(mem==0){
+  //   allocate_page();
+  //   mem= kalloc();
+  //   if(mem==0){
+  //     cprintf("still not allocated");
+  //   }
+  // }
   char *cur=mem;
+  char buf[BSIZE];
   for(int j=0;j<8;j++){
-    rsect(st,cur);
-    cur+=PGSIZE/8;
-    st++;
+    rsect(st+j,buf);
+    memmove(cur,buf,BSIZE);
+    cur+=BSIZE;
+    // st++;
   }
+  uint permission = ss[x].page_perm;
+  *add = *((char*)(V2P(mem)))<<12 | PTE_P | PTE_A | permission;
+  myproc()->rss++;
   // Fetch permissions of page and mark swap slot free
-  uint per= remove_page(x);
+  // uint per= remove_page(x);
   // add new page
 
 }

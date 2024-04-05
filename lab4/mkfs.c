@@ -119,10 +119,15 @@ main(int argc, char *argv[])
   memset(buf, 0, sizeof(buf));
   memmove(buf, &sb, sizeof(sb));
   wsect(1, buf);
-
+// Initialise swap space
   for(i=0; i<nswapslots; i++){
     ss[i].page_perm=0;
     ss[i].is_free=1;
+    // wsect(2+i,zeroes);  // Have written zero to the disk
+    // for(int j=0;j<8;j++){
+    //   wsect(2+8*i+j,zeroes);
+    //   // cur+= BSIZE;
+    // }
   }
 
   rootino = ialloc(T_DIR);
@@ -312,6 +317,9 @@ uint add_page(char* data, int permissions){
   for(i=0; i<nswapslots; i++){
     if(ss[i].is_free) break;
   }
+  // In case swap space is also full
+  if(i==nswapslots) return -1;
+
   ss[i].is_free=0;
   ss[i].page_perm= permissions;
   char* cur= data;

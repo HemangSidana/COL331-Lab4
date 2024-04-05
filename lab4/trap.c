@@ -7,6 +7,7 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
+// Include vm.c to use the page_fault function
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
