@@ -104,7 +104,6 @@ kalloc(void)
     release(&kmem.lock);
     r = (struct run *)allocate_page();
   }
-  
   return (char*)r;
 }
 uint 

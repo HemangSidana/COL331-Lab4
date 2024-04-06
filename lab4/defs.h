@@ -193,7 +193,7 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
-pte_t*          allocate_page();
+void*           allocate_page();
 pte_t*          find_victim(pde_t *pgdir);
 void            unset_access(pde_t *pgdir);
 void            page_fault();

@@ -398,7 +398,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
-pte_t* allocate_page(){
+void* allocate_page(){
   // Get page directory of process having maximum rss
   pde_t *victim_pde= victim_pgdir();
   pte_t* victim_page;
@@ -407,25 +407,20 @@ pte_t* allocate_page(){
   if(victim_page==0){
     unset_access(victim_pde);
     victim_page= find_victim(victim_pde);
+    if(victim_page==0) cprintf("victime_page not found");
     }
   // Save contents of this page in swap blocks
   // PTE_P is unset because page is not in memory
   // Change its address to position in swap_slot
-  // cprintf("here is 6\n");
-  // char data[PGSIZE];
-  // cprintf("here is 1234\n");
-  // memmove(data, (char*)P2V(PTE_ADDR(victim_page)), PGSIZE);
   int permissions= (*victim_page) & 0x07;
   uint pa= PTE_ADDR(*victim_page);
   uint pos= add_page((char*)P2V(pa),permissions);
-  *victim_page &= ~PTE_P;
-  *victim_page |= (pos)<<12;  // It should be 12 instead of 3 because according to slides we are storing swap space index in base address space of pagetable entry
-
-  return victim_page;
+  *victim_page = (pos)<<12;    
+  return (void*) P2V(pa);
 }
 
 pte_t* find_victim(pde_t *pgdir){
-  uint add=0;
+  uint add=PGSIZE;
   while(add < KERNBASE){
     pte_t *x= walkpgdir(pgdir,(void*)add,0);
     // PTE_P is set for x (otherwise walkpgdir function will return 0)
@@ -442,7 +437,7 @@ pte_t* find_victim(pde_t *pgdir){
 }
 
 void unset_access(pde_t *pgdir){
-  uint add=0;
+  uint add=PGSIZE;
   int counter=0;
   while(add < KERNBASE){
     pte_t *x= walkpgdir(pgdir,(void*)add,0);
@@ -463,12 +458,8 @@ void page_fault(){
   pte_t *add = walkpgdir(myproc()->pgdir,(void*)vadd,0);
   uint x= (*add)>>12; 
   uint st= x*8+2;
-  cprintf("%d",st);
-  cprintf("hemang");
   char *mem= kalloc();
-  cprintf("gaivi");
   read_page_from_disk(ROOTDEV,mem,st);
-  cprintf("hemangsidana");
   uint permission = remove_page(x);
   *add = V2P(mem) | PTE_P | PTE_A | permission;
   myproc()->rss+=PGSIZE;

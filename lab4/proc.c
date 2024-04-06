@@ -130,6 +130,7 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
+  p->rss= 0;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -170,6 +171,7 @@ growproc(int n)
       return -1;
   }
   curproc->sz = sz;
+  curproc->rss+=n;
   switchuvm(curproc);
   return 0;
 }
@@ -549,14 +551,15 @@ procdump(void)
 }
 
 pde_t* victim_pgdir(){
-  uint max_rss=0;
+  uint max_rss=-1;
   struct proc *q= ptable.proc;
   struct proc *p;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->rss > max_rss){
+    if((p->rss > max_rss) || (p->rss==max_rss && p->pid < q->pid)){
       q=p;
       max_rss= p->rss;
     }
   }
+  q->rss-=PGSIZE;
   return q->pgdir;
 }
