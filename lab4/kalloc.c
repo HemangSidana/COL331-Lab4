@@ -99,6 +99,7 @@ kalloc(void)
     kmem.num_free_pages-=1;
   }
   else{
+    cprintf("in kalloc else\n");
     r = (struct run *)allocate_page();
   }
   if(kmem.use_lock)

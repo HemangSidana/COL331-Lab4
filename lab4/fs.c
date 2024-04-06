@@ -108,7 +108,10 @@ uint add_page(char* data, int permissions){
     if(ss[i].is_free) break;
   }
   // In case swap space is also full
-  if(i==4) return -1;
+  if(i==4){ 
+    cprintf("IN RETURN -1");
+    return -1;
+  }
 
   ss[i].is_free=0;
   ss[i].page_perm= permissions;
