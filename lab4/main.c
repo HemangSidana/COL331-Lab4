@@ -33,8 +33,11 @@ main(void)
   ideinit();       // disk 
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
+  cprintf("1\n");
   userinit();      // first user process
+  cprintf("3\n");
   mpmain();        // finish this processor's setup
+  cprintf("2\n");
 }
 
 // Other CPUs jump here from entryother.S.
