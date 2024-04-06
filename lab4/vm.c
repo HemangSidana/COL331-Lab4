@@ -7,9 +7,7 @@
 #include "proc.h"
 #include "elf.h"
 #include "fs.h"
-// #include "mkfs.c"
 
-extern struct swap_slot ss[4];
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
@@ -38,7 +36,6 @@ seginit(void)
 static pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
-  // cprintf("starting walk\n");
   pde_t *pde;
   pte_t *pgtab;
 
@@ -55,7 +52,6 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
     // entries, if necessary.
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
-  // cprintf("walk ended\n");
   return &pgtab[PTX(va)];
 }
 
@@ -404,61 +400,42 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 
 pte_t* allocate_page(){
   // Get page directory of process having maximum rss
-  cprintf("in allocate page1\n");
   pde_t *victim_pde= victim_pgdir();
-  cprintf("in allocate page2\n");
   pte_t* victim_page;
   victim_page= find_victim(victim_pde);
-  cprintf("in allocate page3\n");
   // Failed to find victim page
   if(victim_page==0){
-    cprintf("in allocate page4\n");
     unset_access(victim_pde);
-    cprintf("in allocate page5\n");
     victim_page= find_victim(victim_pde);
-    cprintf("in allocate page6\n");
-    // Save contents of this page in swap blocks
-    // PTE_P is unset because page is not in memory
-    // Change its address to position in swap_slot
-    // Copying contents should be written outside if condition
     }
-  char *data=0;
-  cprintf("in allocate page7\n");
-  memmove(data, (char*)P2V(PTE_ADDR(victim_page)), PGSIZE);
-  cprintf("in allocate page8\n");
+  // Save contents of this page in swap blocks
+  // PTE_P is unset because page is not in memory
+  // Change its address to position in swap_slot
+  // cprintf("here is 6\n");
+  // char data[PGSIZE];
+  // cprintf("here is 1234\n");
+  // memmove(data, (char*)P2V(PTE_ADDR(victim_page)), PGSIZE);
   int permissions= (*victim_page) & 0x07;
-  cprintf("in allocate page9\n");
-  uint pos= add_page(data,permissions);
-  cprintf("in allocate page10\n");
+  uint pa= PTE_ADDR(*victim_page);
+  uint pos= add_page((char*)P2V(pa),permissions);
   *victim_page &= ~PTE_P;
-  cprintf("pos is %d", pos);
   *victim_page |= (pos)<<12;  // It should be 12 instead of 3 because according to slides we are storing swap space index in base address space of pagetable entry
-  cprintf("victim page is %d", *victim_page);
+
   return victim_page;
 }
 
 pte_t* find_victim(pde_t *pgdir){
   uint add=0;
-
   while(add < KERNBASE){
-    cprintf("IN while\n");
     pte_t *x= walkpgdir(pgdir,(void*)add,0);
-    // cprintf(*x);
-    cprintf("walkpg done\n");
     // PTE_P is set for x (otherwise walkpgdir function will return 0)
-    cprintf("Hello------------");
-    cprintf("PTE_P is %d\n",PTE_P);
-    cprintf("x is %d\n",(uint)*x);
-    
-    if((*x & PTE_P)){
+    if(x!=0){
       // Found a process with PTE_A Flag unset
-      cprintf("in if\n");
       if((*x & PTE_A)==0){
         return x;
       }
     }
     add+=PGSIZE;
-    cprintf("add is %d\n", add);
   }
   // Failed to find victim page
   return 0;
@@ -482,31 +459,17 @@ void unset_access(pde_t *pgdir){
 }
 
 void page_fault(){
-  cprintf("Pagefault called\n");
   uint vadd= rcr2();
   pte_t *add = walkpgdir(myproc()->pgdir,(void*)vadd,0);
-  cprintf("walkpage done\n");
-  // No need of taking and
-  cprintf("add is %d", *add);
-  uint x= (*add>>12); // Instead of 3->12  and confusion in and
-  cprintf("done x");
+  uint x= (*add)>>12; 
   uint st= x*8+2;
-  // Read contents of page in mem
+  cprintf("%d",st);
+  cprintf("hemang");
   char *mem= kalloc();
-  char *cur=mem;
-  char buf[BSIZE];
-  for(int j=0;j<8;j++){
-    cprintf("calling read page from disk\n");
-    read_page_from_disk(ROOTDEV,buf,st+j);
-    memmove(cur,buf,BSIZE);
-    cur+=BSIZE;
-    // st++;
-  }
-  uint permission = ss[x].page_perm;
-  *add = *((char*)(V2P(mem)))<<12 | PTE_P | PTE_A | permission;
+  cprintf("gaivi");
+  read_page_from_disk(ROOTDEV,mem,st);
+  cprintf("hemangsidana");
+  uint permission = remove_page(x);
+  *add = V2P(mem) | PTE_P | PTE_A | permission;
   myproc()->rss+=PGSIZE;
-  // Fetch permissions of page and mark swap slot free
-  // uint per= remove_page(x);
-  // add new page
-
 }

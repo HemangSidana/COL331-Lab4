@@ -9,18 +9,16 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
-// struct swap_slot;
-// struct swap_slot ss[4];
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
-void            write_page_to_disk(uint dev, char *pg, uint blk);
-void            read_page_from_disk(uint dev, char *pg, uint blk);
-//mkfs.c
-// uint add_page(char* data, int permissions);
-// void rsect(uint sec, void *buf);
+void            write_page_to_disk(uint, char *, uint);
+void            read_page_from_disk(uint, char *, uint);
+
+
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
@@ -57,6 +55,8 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
+uint            add_page(char*, int);
+uint            remove_page(uint);
 
 // ide.c
 void            ideinit(void);
@@ -128,6 +128,7 @@ void            wakeup(void*);
 void            yield(void);
 void             print_rss(void);
 pde_t*          victim_pgdir();
+
 // swtch.S
 void            swtch(struct context**, struct context*);
 
@@ -196,5 +197,6 @@ pte_t*          allocate_page();
 pte_t*          find_victim(pde_t *pgdir);
 void            unset_access(pde_t *pgdir);
 void            page_fault();
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

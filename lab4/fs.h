@@ -58,9 +58,6 @@ struct dirent {
 };
 
 struct swap_slot {
-    uint page_perm;  
-    uint is_free; 
+    int page_perm;  
+    int is_free; 
 };
-extern struct swap_slot ss[4];
-uint add_page(char* data, int permissions);
-void rsect(uint sec, void *buf);

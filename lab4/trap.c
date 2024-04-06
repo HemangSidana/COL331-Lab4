@@ -7,7 +7,6 @@
 #include "x86.h"
 #include "traps.h"
 #include "spinlock.h"
-// Include vm.c to use the page_fault function
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
@@ -49,7 +48,6 @@ trap(struct trapframe *tf)
 
   switch(tf->trapno){
   case T_PGFLT:
-    cprintf("Pagefault called\n");
     page_fault();
     break;
   case T_IRQ0 + IRQ_TIMER:

@@ -22,11 +22,13 @@
 #include "file.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#define nswapslots 16
 static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with
 // only one device
 struct superblock sb; 
-struct swap_slot ss[4];
+struct swap_slot ss[nswapslots];
+
 // Read the super block.
 void
 readsb(int dev, struct superblock *sb)
@@ -36,14 +38,9 @@ readsb(int dev, struct superblock *sb)
   bp = bread(dev, 1);
   memmove(sb, bp->data, sizeof(*sb));
   brelse(bp);
-  for(int i=0; i<4; i++){
+  for(int i=0; i<nswapslots; i++){
     ss[i].page_perm=0;
     ss[i].is_free=1;
-    // wsect(2+i,zeroes);  // Have written zero to the disk
-    // for(int j=0;j<8;j++){
-    //   wsect(2+8*i+j,zeroes);
-    //   // cur+= BSIZE;
-    // }
   }
 }
 
@@ -101,26 +98,6 @@ bfree(int dev, uint b)
   bp->data[bi/8] &= ~m;
   log_write(bp);
   brelse(bp);
-}
-uint add_page(char* data, int permissions){
-  uint i;
-  for(i=0; i<4; i++){
-    if(ss[i].is_free) break;
-  }
-  // In case swap space is also full
-  if(i==4){ 
-    cprintf("IN RETURN -1");
-    return -1;
-  }
-
-  ss[i].is_free=0;
-  ss[i].page_perm= permissions;
-  char* cur= data;
-  for(int j=0;j<8;j++){
-    write_page_to_disk(ROOTDEV,cur,2+8*i+j);
-    cur+= BSIZE;
-  }
-  return i;
 }
 
 // Inodes.
@@ -696,4 +673,23 @@ struct inode*
 nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
+}
+
+uint add_page(char* data, int permissions){
+  uint i;
+  for(i=0; i<nswapslots; i++){
+    if(ss[i].is_free) break;
+  }
+  if(i==nswapslots){
+    cprintf("swap space not available");
+  }
+  ss[i].is_free=0;
+  ss[i].page_perm= permissions;
+  write_page_to_disk(ROOTDEV,data,2+8*i); 
+  return i;
+}
+
+uint remove_page(uint i){
+  ss[i].is_free=1;
+  return ss[i].page_perm;
 }

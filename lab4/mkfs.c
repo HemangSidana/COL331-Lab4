@@ -10,7 +10,6 @@
 #include "fs.h"
 #include "stat.h"
 #include "param.h"
-// #include 
 
 #ifndef static_assert
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
@@ -18,8 +17,8 @@
 
 #define NINODES 200
 
-#define nswapslots 4
-#define nswapblocks 32
+#define nswapslots 16
+#define nswapblocks 144
 
 // Disk layout:
 // [ boot block | sb block | swap blocks | log | inode blocks | free bit map | data blocks ]
@@ -35,7 +34,6 @@ struct superblock sb;
 char zeroes[BSIZE];
 uint freeinode = 1;
 uint freeblock;
-// struct swap_slot ss[nswapslots];
 
 
 void balloc(int);
@@ -120,16 +118,6 @@ main(int argc, char *argv[])
   memset(buf, 0, sizeof(buf));
   memmove(buf, &sb, sizeof(sb));
   wsect(1, buf);
-// Initialise swap space
-  // for(i=0; i<nswapslots; i++){
-  //   ss[i].page_perm=0;
-  //   ss[i].is_free=1;
-  //   // wsect(2+i,zeroes);  // Have written zero to the disk
-  //   // for(int j=0;j<8;j++){
-  //   //   wsect(2+8*i+j,zeroes);
-  //   //   // cur+= BSIZE;
-  //   // }
-  // }
 
   rootino = ialloc(T_DIR);
   assert(rootino == ROOTINO);
@@ -313,25 +301,3 @@ iappend(uint inum, void *xp, int n)
   winode(inum, &din);
 }
 
-// uint add_page(char* data, int permissions){
-//   uint i;
-//   for(i=0; i<nswapslots; i++){
-//     if(ss[i].is_free) break;
-//   }
-//   // In case swap space is also full
-//   if(i==nswapslots) return -1;
-
-//   ss[i].is_free=0;
-//   ss[i].page_perm= permissions;
-//   char* cur= data;
-//   for(int j=0;j<8;j++){
-//     wsect(2+8*i+j,cur);
-//     cur+= BSIZE;
-//   }
-//   return i;
-// }
-
-// uint remove_page(uint i){
-//   ss[i].is_free=1;
-//   return ss[i].page_perm;
-// }

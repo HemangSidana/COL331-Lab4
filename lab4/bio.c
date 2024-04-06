@@ -145,21 +145,12 @@ brelse(struct buf *b)
 void
 write_page_to_disk(uint dev, char *pg, uint blk)
 {
-
   struct buf* buffer;
-  int blockno=0;
   for(int i=0;i<8;i++){
-    // begin_op();           //for atomicity , the block must be written to the disk
-    blockno=blk+i;
-    buffer=bget(ROOTDEV,blockno);
-    /*
-    Writing physical page to disk by dividing it into 8 pieces (4096 bytes/8 = 512 bytes = 1 block)
-    As one page requires 8 disk blocks
-    */
-    memmove(buffer->data,pg + i*512,512);   // write 512 bytes to the block
+    buffer=bget(ROOTDEV,blk+i);
+    memmove(buffer->data,pg + i*512,512);  
     bwrite(buffer);
-    brelse(buffer);                               //release lock
-    // end_op();
+    brelse(buffer);                               
   }
 }
 
@@ -167,16 +158,11 @@ write_page_to_disk(uint dev, char *pg, uint blk)
 void
 read_page_from_disk(uint dev, char *pg, uint blk)
 {
-  //*xv7***********************
   struct buf* buffer;
-  int blockno=0;
   for(int i=0;i<8;i++){
-
-    blockno=blk+i;
-    buffer=bread(ROOTDEV,blockno);    //if present in buffer, returns from buffer else from disk
-    memmove(pg+i*512, buffer->data,512);  //write to pg from buffer
-    brelse(buffer);                   //release lock
+    buffer=bread(ROOTDEV,blk+i);   
+    memmove(pg+i*512, buffer->data,512);  
+    brelse(buffer);            
   }
-
 }
 

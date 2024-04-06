@@ -547,23 +547,16 @@ procdump(void)
     cprintf("\n");
   }
 }
-// Missed the case when two processes have same rss value
+
 pde_t* victim_pgdir(){
   uint max_rss=0;
-  struct proc *q  = ptable.proc;
+  struct proc *q= ptable.proc;
   struct proc *p;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->rss > max_rss){
       q=p;
       max_rss= p->rss;
     }
-    // Added the case here
-    else if(p->rss == max_rss){
-      if(p->pid < q->pid){
-        q=p;
-      }
-    }
   }
-  q->rss-=PGSIZE;
   return q->pgdir;
 }
