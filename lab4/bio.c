@@ -64,7 +64,6 @@ bget(uint dev, uint blockno)
   struct buf *b;
 
   acquire(&bcache.lock);
-
   // Is the block already cached?
   for(b = bcache.head.next; b != &bcache.head; b = b->next){
     if(b->dev == dev && b->blockno == blockno){
@@ -143,7 +142,7 @@ brelse(struct buf *b)
 // Blank page.
 
 void
-write_page_to_disk(uint dev, char *pg, uint blk)
+write_page(char *pg, uint blk)
 {
   struct buf* buffer;
   for(int i=0;i<8;i++){
@@ -156,7 +155,7 @@ write_page_to_disk(uint dev, char *pg, uint blk)
 
 
 void
-read_page_from_disk(uint dev, char *pg, uint blk)
+read_page(char *pg, uint blk)
 {
   struct buf* buffer;
   for(int i=0;i<8;i++){

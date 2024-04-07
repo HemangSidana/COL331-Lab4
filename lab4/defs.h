@@ -9,15 +9,16 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+typedef uint pte_t;
+
 
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
-void            write_page_to_disk(uint, char *, uint);
-void            read_page_from_disk(uint, char *, uint);
-
+void            write_page(char *, uint);
+void            read_page(char *, uint);
 
 // console.c
 void            consoleinit(void);
@@ -55,8 +56,6 @@ struct inode*   nameiparent(char*, char*);
 int             readi(struct inode*, char*, uint, uint);
 void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
-uint            add_page(char*, int);
-uint            remove_page(uint);
 
 // ide.c
 void            ideinit(void);
@@ -126,8 +125,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-void             print_rss(void);
-pde_t*          victim_pgdir();
+void            print_rss(void);
+struct proc *   victim_proc();
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -193,10 +192,16 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+pte_t*          walkpgdir(pde_t *pgdir, const void *va, int alloc);
+
+// pageswap.c
+void            init_slot();
+pte_t*          victim_page();
+void            unset_access(pde_t* , int);
 void            allocate_page();
-int             remove_victim(pde_t *pgdir);
-void            unset_access(pde_t *pgdir);
+void            clean_swap(pde_t*);
 void            page_fault();
+
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

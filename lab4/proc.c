@@ -111,7 +111,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  p->rss=PGSIZE;
   return p;
 }
 
@@ -130,7 +130,6 @@ userinit(void)
     panic("userinit: out of memory?");
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
   p->sz = PGSIZE;
-  p->rss= 0;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
@@ -171,7 +170,6 @@ growproc(int n)
       return -1;
   }
   curproc->sz = sz;
-  curproc->rss+=n;
   switchuvm(curproc);
   return 0;
 }
@@ -199,6 +197,7 @@ fork(void)
     return -1;
   }
   np->sz = curproc->sz;
+  np->rss= curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
@@ -288,6 +287,7 @@ wait(void)
       havekids = 1;
       if(p->state == ZOMBIE){
         // Found one.
+        clean_swap(p->pgdir);
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -550,17 +550,18 @@ procdump(void)
   }
 }
 
-pde_t* victim_pgdir(){
-  uint max_rss=0;
-  struct proc *q= ptable.proc;
-  struct proc *p;
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if((p->rss > max_rss) || (p->rss==max_rss && p->pid < q->pid)){
-      q=p;
-      max_rss= p->rss;
+struct proc * victim_proc(){
+    struct proc *p;
+    uint max_rss = 0;
+    struct proc *victim_proc = ptable.proc;
+    acquire(&ptable.lock);
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->rss > max_rss || (p->rss==max_rss && p->pid< victim_proc->pid)){
+            victim_proc = p;
+            max_rss = p->rss;
+        }
     }
-  }
-  q->rss-=PGSIZE;
-  cprintf("id of victim %d\n",q->pid);
-  return q->pgdir;
+    release(&ptable.lock);
+    return victim_proc;
 }
+

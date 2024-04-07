@@ -52,7 +52,7 @@ freerange(void *vstart, void *vend)
   for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
   {
     kfree(p);
-    // kmem.num_free_pages+=1;
+    kmem.num_free_pages+=1;
   }
     
 }
@@ -65,10 +65,10 @@ void
 kfree(char *v)
 {
   struct run *r;
-
-  if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
+  if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP){
     panic("kfree");
-
+  }  
+  
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
 
@@ -97,18 +97,13 @@ kalloc(void)
   {
     kmem.freelist = r->next;
     kmem.num_free_pages-=1;
-    
   }
-  // else{
-  //   cprintf("i am here in kalloc\n");
-  //   release(&kmem.lock);
-  //   r = (struct run *)allocate_page();
-  //   cprintf("allocated by kalloc\n");
-  // }
+    
   if(kmem.use_lock)
     release(&kmem.lock);
-  if(r)  return (char*)r;
-  // cprintf("not allocated\n");
+  if(r){
+    return (char*)r;
+  }
   allocate_page();
   return kalloc();
 }

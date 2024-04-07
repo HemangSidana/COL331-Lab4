@@ -22,12 +22,10 @@
 #include "file.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
-#define nswapslots 16
 static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with
 // only one device
 struct superblock sb; 
-struct swap_slot ss[nswapslots];
 
 // Read the super block.
 void
@@ -38,10 +36,7 @@ readsb(int dev, struct superblock *sb)
   bp = bread(dev, 1);
   memmove(sb, bp->data, sizeof(*sb));
   brelse(bp);
-  for(int i=0; i<nswapslots; i++){
-    ss[i].page_perm=0;
-    ss[i].is_free=1;
-  }
+  init_slot();
 }
 
 // Zero a block.
@@ -673,25 +668,4 @@ struct inode*
 nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
-}
-
-uint add_page(char* data, int permissions){
-  uint i;
-  for(i=0; i<nswapslots; i++){
-    if(ss[i].is_free) break;
-  }
-  if(i==nswapslots){
-    cprintf("swap space not available");
-  }
-  cprintf("allocated %dth swap slot\n",i);
-  ss[i].is_free=0;
-  ss[i].page_perm= permissions;
-  write_page_to_disk(ROOTDEV,data,2+8*i); 
-  return i;
-}
-
-uint remove_page(uint i){
-  cprintf("free %dth swap slot\n",i);
-  ss[i].is_free=1;
-  return ss[i].page_perm;
 }
