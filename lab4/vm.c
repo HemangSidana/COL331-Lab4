@@ -55,6 +55,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
   return &pgtab[PTX(va)];
 }
 
+
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
@@ -398,69 +399,148 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
-void* allocate_page(){
+void allocate_page(){
   // Get page directory of process having maximum rss
+  cprintf("need page\n");
   pde_t *victim_pde= victim_pgdir();
-  pte_t* victim_page;
-  victim_page= find_victim(victim_pde);
-  // Failed to find victim page
-  if(victim_page==0){
+  // pte_t* victim_page;
+  // victim_page= find_victim(victim_pde);
+  // cprintf("%d victim_pg add\n", victim_page);
+  int z= remove_victim(victim_pde);
+  //Failed to find victim page
+  while(z==0){
     unset_access(victim_pde);
-    victim_page= find_victim(victim_pde);
-    if(victim_page==0) cprintf("victime_page not found");
-    }
+    z= remove_victim(victim_pde);
+    if(z==0) cprintf("victime_page not found\n");
+  }
   // Save contents of this page in swap blocks
   // PTE_P is unset because page is not in memory
   // Change its address to position in swap_slot
-  int permissions= (*victim_page) & 0x07;
-  uint pa= PTE_ADDR(*victim_page);
-  uint pos= add_page((char*)P2V(pa),permissions);
-  *victim_page = (pos)<<12;    
-  return (void*) P2V(pa);
+  // int permissions= (*victim_page) & 0xFFF;
+  // uint pa= PTE_ADDR(*victim_page);
+  // uint pos= add_page((char*)P2V(pa),permissions);
+  // // cprintf("%d pos\n",pos);
+  // // cprintf("%d i am pa \n",pa);
+  // *victim_page = (pos)<<12;   
+  // // cprintf("%d new addresss",*victim_page);
+  // kfree((char*)P2V(pa)); 
+  // return (void*) P2V(pa);
+  return;
 }
 
-pte_t* find_victim(pde_t *pgdir){
-  uint add=PGSIZE;
-  while(add < KERNBASE){
-    pte_t *x= walkpgdir(pgdir,(void*)add,0);
-    // PTE_P is set for x (otherwise walkpgdir function will return 0)
-    if(x!=0){
-      // Found a process with PTE_A Flag unset
-      if((*x & PTE_A)==0){
-        return x;
+// pte_t* find_victim(pde_t *pgdir){
+//   uint add=PGSIZE;
+//   while(add < KERNBASE){
+//     pte_t *x= walkpgdir(pgdir,(void*)add,0);
+//     // PTE_P is set for x (otherwise walkpgdir function will return 0)
+//     if(x!=0){
+//       // Found a process with PTE_A Flag unset
+//       if((*x & PTE_A)==0  && (*x & PTE_P)){
+//         // cprintf("%d address\n",add);
+//         // cprintf("%d corresponding\n",x);
+//         return x;
+//       }
+//     }
+//     add+=PGSIZE;
+//   }
+//   // Failed to find victim page
+//   return 0;
+// }
+
+// pte_t* find_victim(pde_t *pgdir){
+//   for(uint i=0; i<1024; i++){
+//     pde_t* pde= &pgdir[i];
+//     if(*pde & PTE_P){
+//         pte_t* pgtab= (pte_t*) P2V(PTE_ADDR(*pde));
+//       for(uint j=0; j<1024; j++){
+//         if((pgtab[j] & PTE_P) &&(pgtab[j] & ~PTE_A)){
+//           return &pgtab[j];
+//         }
+//       }
+//     }
+    
+//   }
+//   // Failed to find victim page
+//   return 0;
+// }
+
+int remove_victim(pde_t *pgdir){
+  for(uint i=0; i<1024; i++){
+    pde_t* pde= &pgdir[i];
+    if(*pde & PTE_P){
+        pte_t* pgtab= (pte_t*) P2V(PTE_ADDR(*pde));
+      for(uint j=0; j<1024; j++){
+        pte_t* victim_page= &pgtab[j];
+        if((*victim_page & PTE_P) &&(*victim_page & ~PTE_A)){
+          // cprintf("entered as %d %d\n",i,j);
+          // cprintf("%d victim_pg add %d\n", victim_page, *victim_page);
+          int permissions= (*victim_page) & 0xFFF;
+          uint pa= PTE_ADDR(*victim_page);
+          uint pos= add_page((char*)P2V(pa),permissions);
+          *victim_page = (pos)<<12;  
+          // cprintf("victim %d\n",*victim_page); 
+          kfree((char*)P2V(pa)); 
+          return 1;
+        }
       }
     }
-    add+=PGSIZE;
+    
   }
   // Failed to find victim page
   return 0;
 }
 
+// void unset_access(pde_t *pgdir){
+//   uint add=PGSIZE;
+//   int counter=0;
+//   while(add < KERNBASE){
+//     pte_t *x= walkpgdir(pgdir,(void*)add,0);
+//     if(x!=0 && (*x & PTE_P) && (*x & PTE_A)){
+//       // Unset access bit of every tenth process
+//       if(counter==0){
+//         cprintf("before unset %d\n",*x);
+//         *x &= ~ PTE_A;
+//         cprintf("after unset %d\n",*x);
+//         cprintf("unset bit of %d",add);
+//       }
+//       counter= (counter+1)%10;
+//     }
+//     add+=PGSIZE;
+//   }
+//   return;
+// }
+
 void unset_access(pde_t *pgdir){
-  uint add=PGSIZE;
-  int counter=0;
-  while(add < KERNBASE){
-    pte_t *x= walkpgdir(pgdir,(void*)add,0);
-    if(x!=0){
-      // Unset access bit of every tenth process
-      if(counter==0){
-        *x &= ~ PTE_A;
+  int count=0;
+  for(uint i=0; i<1024; i++){
+    pde_t* pde= &pgdir[i];
+    if(*pde & PTE_P){
+        pte_t* pgtab= (pte_t*) P2V(PTE_ADDR(*pde));
+      for(uint j=0; j<1024; j++){
+        pte_t* victim_page= &pgtab[j];
+        if((*victim_page & PTE_P) &&(*victim_page & PTE_A)){
+          if(count==0) (*victim_page) &= ~PTE_A;
+          count=(1+count)%10;
+        }
       }
-      counter= (counter+1)%10;
     }
-    add+=PGSIZE;
+    
   }
-  return;
+  
 }
 
+
 void page_fault(){
-  uint vadd= rcr2();
-  pte_t *add = walkpgdir(myproc()->pgdir,(void*)vadd,0);
+  uint vadd= PGROUNDDOWN(rcr2());
+  pte_t *add = walkpgdir(myproc()->pgdir,(char*)vadd,0);
   uint x= (*add)>>12; 
+  cprintf("page fault %d\n",x);
   uint st= x*8+2;
   char *mem= kalloc();
   read_page_from_disk(ROOTDEV,mem,st);
   uint permission = remove_page(x);
-  *add = V2P(mem) | PTE_P | PTE_A | permission;
+  *add = PTE_ADDR(V2P(mem)) | PTE_P | permission;
   myproc()->rss+=PGSIZE;
+  cprintf("page fault handled\n");
+  // lcr3(V2P(myproc()->pgdir));
 }

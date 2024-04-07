@@ -683,6 +683,7 @@ uint add_page(char* data, int permissions){
   if(i==nswapslots){
     cprintf("swap space not available");
   }
+  cprintf("allocated %dth swap slot\n",i);
   ss[i].is_free=0;
   ss[i].page_perm= permissions;
   write_page_to_disk(ROOTDEV,data,2+8*i); 
@@ -690,6 +691,7 @@ uint add_page(char* data, int permissions){
 }
 
 uint remove_page(uint i){
+  cprintf("free %dth swap slot\n",i);
   ss[i].is_free=1;
   return ss[i].page_perm;
 }

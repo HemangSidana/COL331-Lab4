@@ -551,7 +551,7 @@ procdump(void)
 }
 
 pde_t* victim_pgdir(){
-  uint max_rss=-1;
+  uint max_rss=0;
   struct proc *q= ptable.proc;
   struct proc *p;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
@@ -561,5 +561,6 @@ pde_t* victim_pgdir(){
     }
   }
   q->rss-=PGSIZE;
+  cprintf("id of victim %d\n",q->pid);
   return q->pgdir;
 }
