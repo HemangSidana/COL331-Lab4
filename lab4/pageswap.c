@@ -74,10 +74,15 @@ void allocate_page(){
 }
 
 void clean_swap(pde_t* pde){
-    for(int i = 0; i < NPTENTRIES; i++){
-        if(pde[i] & PTE_S){
-            uint slot = PTE_ADDR(pde[i]) >> 12;
-            ss[slot].is_free = 1;
+    for(int i = 0; i < NPDENTRIES; i++){
+        if(pde[i] & PTE_P){
+            pte_t* pte= (pte_t*)P2V(PTE_ADDR(pde[i]));
+            for(int j=0; j< NPTENTRIES; j++){
+                if(pte[j] & PTE_S){
+                    uint slot= PTE_ADDR(pte[j]) >> 12;
+                    ss[slot].is_free=1;
+                }
+            }
         }
     }
 }
