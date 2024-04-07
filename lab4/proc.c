@@ -111,7 +111,7 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-  p->rss=PGSIZE;
+  p->rss+=PGSIZE;
   return p;
 }
 
@@ -190,14 +190,14 @@ fork(void)
   }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz,np)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
   }
   np->sz = curproc->sz;
-  np->rss= curproc->sz;
+  // np->rss= curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
