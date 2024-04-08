@@ -10,7 +10,7 @@ mkdir ./test_dir
 echo $submission
 
 # Accept both .tar.gz and .gz or any other gz ;)
-fileNameRegex="lab3_[0-9]{4}[A-Z]{2}.[0-9]{4}.*.gz"
+fileNameRegex="lab4_[0-9]{4}[A-Z]{2}.[0-9]{4}.*.gz"
 
 # if ! [[ $submission =~ $fileNameRegex ]]; then
 # 	# not considering zip for now
@@ -83,7 +83,7 @@ do
 
 	# NOTE: we are doing case insensitive matching.  If this is not what you want,
 	# just remove the "-i" flag
-	if diff -iZwB <(cat out_lab3_$t) <(cat res_lab3_$t) > /dev/null
+	if diff -iZwB <(cat out_lab4_$t) <(cat res_lab4_$t) > /dev/null
 	then
 		echo -e "\e[0;32mPASS\e[0m"
 		marks="$marks,1" # 1 mark for pass
@@ -92,7 +92,7 @@ do
 		echo -e "\e[0;31mFAIL\e[0m"
 		marks="$marks,0" # 0 mark for fail
 		echo "Output for test case $t:" >> .output
-		cat res_lab3_$t >> .output
+		cat res_lab4_$t >> .output
 	fi
 done
 echo "$total_test test cases passed for $entryNum"
