@@ -553,7 +553,7 @@ procdump(void)
 struct proc * victim_proc(){
     struct proc *p;
     uint max_rss = 0;
-    struct proc *victim_proc;
+    struct proc *victim_proc=0;
     int first=0;
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
