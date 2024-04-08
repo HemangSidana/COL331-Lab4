@@ -553,15 +553,23 @@ procdump(void)
 struct proc * victim_proc(){
     struct proc *p;
     uint max_rss = 0;
-    struct proc *victim_proc = ptable.proc;
+    struct proc *victim_proc;
+    int first=0;
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->state==UNUSED) continue;
+        if(!first){
+          first=1; victim_proc=p;
+        }
         if(p->rss > max_rss || (p->rss==max_rss && p->pid< victim_proc->pid)){
             victim_proc = p;
             max_rss = p->rss;
         }
     }
     release(&ptable.lock);
+    if(!first){
+      panic("All Processes are UNUSED");
+    }
     return victim_proc;
 }
 
